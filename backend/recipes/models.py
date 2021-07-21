@@ -1,19 +1,18 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from colorfield.fields import ColorField
+
 
 User = get_user_model()
 
 
 class Tag(models.Model):
-
-    food_time = models.CharField(max_length=64, unique=True,)
-
-    def __str__(self) -> str:
-        return self.food_time
+    name = models.CharField(max_length=200)
+    color = ColorField(null=True, format='hex')
+    slug = models.SlugField(unique=True)
 
 
 class Ingredient(models.Model):
-    
     name = models.CharField(max_length=256)
     unit = models.CharField(max_length=64)
 
@@ -40,7 +39,6 @@ class Recipe(models.Model):
 
 
 class IngredientRecipe(models.Model):
-
     ingredient = models.ForeignKey(Ingredient, 
                                    on_delete=models.CASCADE)
     recipe = models.ForeignKey(Recipe, 
