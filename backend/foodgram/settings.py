@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'recipes',
     'colorfield',
     'rest_framework',
-    'rest_framework_simplejwt',
+    'rest_framework.authtoken',
     'djoser',
 ]
 
@@ -108,11 +108,23 @@ AUTH_PASSWORD_VALIDATORS = [
 
 AUTH_USER_MODEL = 'users.User'
 
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ),
 }
+
+
+DJOSER = {
+    'HIDE_USERS': False,
+    'LOGIN_FIELD': 'email',
+    'SERIALIZERS': {
+            'user': 'api.serializers.CustomUserSerializer',
+            'user_create': 'api.serializers.UserRegistrationSerializer',},
+    'PERMISSIONS': {
+        'user': ['djoser.permissions.CurrentUserOrAdminOrReadOnly'],
+        'user_list': ['rest_framework.permissions.AllowAny'],}}
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.2/topics/i18n/

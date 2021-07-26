@@ -1,17 +1,19 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
-from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.decorators import action
-from .serializers import UserSerializer
+from rest_framework.decorators import action, permission_classes
+from rest_framework.permissions import AllowAny
+from djoser.views import UserViewSet
+from .serializers import UserRegistrationSerializer
+
 
 User = get_user_model()
 
 
-class UserModelViewSet(viewsets.ModelViewSet):
+class UserModelViewSet(UserViewSet):
 
-    serializer_class = UserSerializer
+    serializer_class = UserRegistrationSerializer
     queryset = User.objects.all()
     lookup_field = 'username'
     search_fields = ('username',)
@@ -19,7 +21,7 @@ class UserModelViewSet(viewsets.ModelViewSet):
     @action(
         methods=['get'],
         detail=False,
-        url_path="me"
+        url_path="me",
     )
     def user_profile(self, request):
         user = get_object_or_404(User, id=request.user.id)
