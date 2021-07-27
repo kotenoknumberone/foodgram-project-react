@@ -31,10 +31,8 @@ class CustomUserSerializer(BaseUserSerializer):
 
     class Meta(BaseUserSerializer.Meta):
         fields = (
-            'id',
             'first_name',
             'last_name',
             'username',
             'email',
-            'password',
         )
