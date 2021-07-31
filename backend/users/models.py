@@ -11,6 +11,7 @@ class User(AbstractUser):
     password = models.CharField(max_length=150)
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
+    
 
     REQUIRED_FIELDS = [
         'email',
@@ -22,3 +23,17 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+class Subscribe(models.Model):
+
+    subscriber = models.ForeignKey(
+                                User, 
+                                related_name='follower',
+                                on_delete=models.CASCADE)
+    author = models.ForeignKey(
+                            User, 
+                            related_name='following',
+                            on_delete=models.CASCADE)
+    
+    #class Meta:
+       #unique_together = ("user", "author")
