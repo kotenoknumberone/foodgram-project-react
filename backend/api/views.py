@@ -8,8 +8,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from djoser.views import UserViewSet
-from .serializers import SubscribeSerializer, UserRegistrationSerializer, SubscribeUserSerializer, SubscribeGetUserSerializer
+from .serializers import SubscribeSerializer, UserRegistrationSerializer
+from .serializers import SubscribeUserSerializer, SubscribeGetUserSerializer
+from .serializers import TagSerializer
 from users.models import Subscribe
+from recipes.models import Tag, IngredientRecipe, Ingredient, Recipe
 
 
 User = get_user_model()
@@ -56,4 +59,16 @@ class SubscribeListView(generics.ListAPIView):
     def get_queryset(self):
         return Subscribe.objects.filter(subscriber=self.request.user)
     
-        
+
+class TagApiViewSet(viewsets.ViewSet):
+
+    def list(self, request):
+        queryset = Tag.objects.all()
+        serializer = TagSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, pk=None):
+        queryset = Tag.objects.all()
+        tag = get_object_or_404(queryset, pk=pk)
+        serializer = TagSerializer(tag)
+        return Response(serializer.data)     

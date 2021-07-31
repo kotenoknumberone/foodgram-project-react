@@ -4,6 +4,7 @@ from rest_framework.validators import UniqueValidator, UniqueTogetherValidator
 from djoser.serializers import UserCreateSerializer as BaseUserRegistrationSerializer
 from djoser.serializers import UserSerializer as BaseUserSerializer
 from users.models import Subscribe
+from recipes.models import Tag, Recipe, Ingredient, IngredientRecipe
 
 
 User = get_user_model()
@@ -80,3 +81,44 @@ class SubscribeSerializer(serializers.ModelSerializer):
         validators = [UniqueTogetherValidator(
             queryset=Subscribe.objects.all(),
             fields=['user', 'author'])]
+
+
+class TagSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Tag
+        fields = ('id',
+                  'name',
+                  'color',
+                  'slug',)
+
+
+class RecipeSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Recipe
+        fields = ('author',
+                  'title',
+                  'image',
+                  'description',
+                  'ingredients',
+                  'tag',
+                  'time',)
+
+
+class IngredientSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Ingredient
+        fields = ('name',
+                  'unit',)
+
+
+class IngredientRecipeSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = IngredientRecipe
+        fields = ('ingredient',
+                  'recipe',
+                  'value',)
+
