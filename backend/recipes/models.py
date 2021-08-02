@@ -12,37 +12,44 @@ class Tag(models.Model):
     color = ColorField(null=True, format='hex')
     slug = models.SlugField(unique=True)
 
+    def __str__(self) -> str:
+        return self.name
+
 
 class Ingredient(models.Model):
     
     name = models.CharField(max_length=256)
-    unit = models.CharField(max_length=64)
+    umeasurement_unit = models.CharField(max_length=64)
 
     def __str__(self) -> str:
-        return '{},{}'.format(self.name, self.unit)
+        return '{},{}'.format(self.name, self.umeasurement_unit)
 
 
 class Recipe(models.Model):
 
     author = models.ForeignKey(User,
-                               on_delete=models.CASCADE,)
-    title = models.CharField(max_length=256)
+                               on_delete=models.CASCADE,
+                               blank=False, null=True,)
+    name = models.CharField(max_length=256)
     image = models.ImageField(upload_to='recipes/',
                               blank=True,
                               null=True)
-    description = models.TextField()
+    text = models.TextField()
     ingredients = models.ManyToManyField(Ingredient,
-                                         through='IngredientRecipe')
-    tag = models.ManyToManyField(Tag)
-    time = models.PositiveIntegerField()
+                                         through='IngredientRecipe',
+                                         null=True)
+    tags = models.ManyToManyField(Tag)
+    cooking_time = models.PositiveIntegerField()
 
     def __str__(self) -> str:
-        return self.title
+        return self.name
 
 
 class IngredientRecipe(models.Model):
     ingredient = models.ForeignKey(Ingredient, 
-                                   on_delete=models.CASCADE)
+                                   on_delete=models.CASCADE,
+                                   null=True)
     recipe = models.ForeignKey(Recipe, 
-                               on_delete=models.CASCADE)
-    value = models.PositiveIntegerField()
+                               on_delete=models.CASCADE,
+                               null=True)
+    amount = models.PositiveIntegerField()
