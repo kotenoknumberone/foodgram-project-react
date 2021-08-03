@@ -12,11 +12,12 @@ from rest_framework.views import APIView
 
 from .permissions import AdminOrAuthorOrReadOnly
 from users.models import Subscribe
-from recipes.models import Ingredient, Recipe, Tag
+from recipes.models import Favorite, Ingredient, Recipe, Tag
 from .serializers import (IngredientSerializer, SubscribeGetUserSerializer,
                           SubscribeSerializer, SubscribeUserSerializer,
                           TagSerializer, UserRegistrationSerializer,
-                          RecipeSerializer, RecipeCreateSerializer)
+                          RecipeSerializer, RecipeCreateSerializer,
+                          FavoriteSerializer,)
 
 
 User = get_user_model()
@@ -33,8 +34,10 @@ class UserModelViewSet(UserViewSet):
 class SubscribeCreateDeleteView(APIView):
 
     def get(self, request, id):
+
         author = get_object_or_404(User, id=id)
         subscriber = request.user
+
         if Subscribe.objects.filter(subscriber=subscriber, 
                                     author=author).exists():
             return Response('Вы уже подписаны',)
@@ -46,8 +49,10 @@ class SubscribeCreateDeleteView(APIView):
                             status=status.HTTP_200_OK)
 
     def delete(self, request, id):
+
         author = get_object_or_404(User, id=id)
         subscriber = request.user
+
         subscribe = get_object_or_404(Subscribe, 
                                       author=author,
                                       subscriber=subscriber)
@@ -78,6 +83,39 @@ class TagApiViewSet(viewsets.ViewSet):
         return Response(serializer.data)     
 
 
+class FavoriteCreateDeleteView(APIView):
+
+    permission_classes = [IsAuthenticated, ]
+
+    def get(self, request, id):
+
+        recipe = get_object_or_404(Recipe, id=id)
+        user = request.user
+
+        if Favorite.objects.filter(user=user, 
+                                   recipes=recipe).exists():
+            return Response('Вы уже добавили рецепт в избранное.',)
+        Favorite.objects.get_or_create(recipes=recipe, 
+                                       user=user,)
+
+        favorite = Favorite.objects.get(recipes=recipe, user=user)                            
+        serializer = FavoriteSerializer(favorite)
+
+        return Response(serializer.data, 
+                        status=status.HTTP_200_OK)
+
+    def delete(self, request, id):
+        recipe = get_object_or_404(Recipe, id=id)
+        user = request.user
+
+        favorite = get_object_or_404(Favorite, 
+                                      recipes=recipe,
+                                      user=user)
+        favorite.delete()
+        return Response(status=status.HTTP_200_OK)
+
+
+
 class IngredientApiViewSet(viewsets.ViewSet):
     
     filter_backends = [filters.SearchFilter]
@@ -98,16 +136,30 @@ class IngredientApiViewSet(viewsets.ViewSet):
 
 class RecipeModelViewSet(viewsets.ModelViewSet):
 
+    permission_classes = [AdminOrAuthorOrReadOnly]
     queryset = Recipe.objects.all()
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
             return RecipeSerializer
-        return RecipeCreateSerializer
+        if self.action in ['create', 'update']:    
+            return RecipeCreateSerializer
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-    #def get_permissions(self):
-    #    return get_method_permissions(self, **RECIPE_METHOD_PERMISSIONS)
-    
+    def destroy(self, request, pk, **kwargs):
+        recipe = Recipe.objects.get(pk=pk)
+        recipe.delete()
+        return Response(status=status.HTTP_200)
+
+    def update(self, request, pk):
+        recipe = self.get_object()
+        recipe.id = pk
+        recipe.save()
+        serializer = RecipeSerializer(recipe, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        recipe = serializer.save()
+        serializer = RecipeCreateSerializer(recipe)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+

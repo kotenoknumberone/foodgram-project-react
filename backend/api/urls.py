@@ -4,7 +4,7 @@ from users.models import Subscribe
 
 from .views import (IngredientApiViewSet, SubscribeCreateDeleteView,
                     SubscribeListView, TagApiViewSet, UserModelViewSet,
-                    RecipeModelViewSet)
+                    RecipeModelViewSet, FavoriteCreateDeleteView)
 
 router_1 = DefaultRouter()
 router_1.register('users', UserModelViewSet, 'users')
@@ -18,15 +18,18 @@ router_4.register('recipes', RecipeModelViewSet, 'recipes')
 
 
 urlpatterns = [
-    path('', include(router_1.urls)),
-    path('', include(router_2.urls)),
-    path('', include(router_3.urls)),
-    path('', include(router_4.urls)),
-    path('users/<int:id>/subscribe', 
+     path('', include(router_1.urls)),
+     path('', include(router_2.urls)),
+     path('', include(router_3.urls)),
+     path('', include(router_4.urls)),
+     path('users/<int:id>/subscribe', 
          SubscribeCreateDeleteView.as_view(), 
-         name='subscribe'),
-    path('users/subscriptions', 
+         name='subscribe'),     
+     path('users/subscriptions', 
          SubscribeListView.as_view(), 
          name='subscribes_list'),
+     path('recipes/<int:id>/favorite', 
+         FavoriteCreateDeleteView.as_view(), 
+         name='favorite'),
 ]     
 

@@ -19,10 +19,10 @@ class Tag(models.Model):
 class Ingredient(models.Model):
     
     name = models.CharField(max_length=256)
-    umeasurement_unit = models.CharField(max_length=64)
+    measurement_unit = models.CharField(max_length=64)
 
     def __str__(self) -> str:
-        return '{},{}'.format(self.name, self.umeasurement_unit)
+        return '{},{}'.format(self.name, self.measurement_unit)
 
 
 class Recipe(models.Model):
@@ -31,13 +31,12 @@ class Recipe(models.Model):
                                on_delete=models.CASCADE,
                                blank=False, null=True,)
     name = models.CharField(max_length=256)
-    image = models.ImageField(upload_to='recipes/',
+    image = models.ImageField(upload_to='recipes/images',
                               blank=True,
                               null=True)
     text = models.TextField()
     ingredients = models.ManyToManyField(Ingredient,
-                                         through='IngredientRecipe',
-                                         null=True)
+                                         through='IngredientRecipe',)
     tags = models.ManyToManyField(Tag)
     cooking_time = models.PositiveIntegerField()
 
@@ -50,6 +49,19 @@ class IngredientRecipe(models.Model):
                                    on_delete=models.CASCADE,
                                    null=True)
     recipe = models.ForeignKey(Recipe, 
-                               on_delete=models.CASCADE,
-                               null=True)
+                               on_delete=models.CASCADE,)
     amount = models.PositiveIntegerField()
+
+
+class Favorite(models.Model):
+    recipes = models.ForeignKey(Recipe,
+                                on_delete=models.CASCADE,
+                                verbose_name='Рецепты'
+    )
+    user = models.ForeignKey(User,
+                             on_delete=models.CASCADE,
+                             verbose_name='Пользователь'
+    )
+
+    class Meta:
+        verbose_name = 'Избранное'

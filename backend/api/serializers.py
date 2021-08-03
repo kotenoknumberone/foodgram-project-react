@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db.models import fields
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
 
@@ -6,8 +7,9 @@ from djoser.serializers import \
     UserCreateSerializer as BaseUserRegistrationSerializer
 from djoser.serializers import UserSerializer as BaseUserSerializer
 from drf_extra_fields.fields import Base64ImageField
-from recipes.models import Ingredient, IngredientRecipe, Recipe, Tag
+from recipes.models import Ingredient, IngredientRecipe, Recipe, Tag, Favorite
 from rest_framework import serializers
+from rest_framework.serializers import ReadOnlyField
 from rest_framework.validators import UniqueTogetherValidator, UniqueValidator
 from users.models import Subscribe
 
@@ -89,7 +91,6 @@ class SubscribeSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(DjoserUserSerializer):
-    #is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -100,12 +101,6 @@ class UserSerializer(DjoserUserSerializer):
             'first_name',
             'last_name',
         )
-
-    '''def get_is_subscribed(self, subscriber):
-        author = self.context['request'].subscriber
-        if not author.is_authenticated:
-            return False
-        return Subscribe.objects.filter(subscriber=subscriber, author=author).exists()'''
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -217,4 +212,35 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             )
         return recipe
 
+    def update(self, instance, validated_data):
+        
+        ingredients = validated_data.pop('ingredients')
+        IngredientRecipe.objects.filter(recipe=instance).delete()
+        for new_ingredient in ingredients:
+            IngredientRecipe.objects.create(
+                id=new_ingredient['id'],
+                recipe=instance,
+                amount=new_ingredient['amount']
+            )
+        instance.name = validated_data.pop('name')
+        instance.text = validated_data.pop('text')
+        if validated_data.get('image') is not None:
+            instance.image = validated_data.pop('image')
+        instance.cooking_time = validated_data.pop('cooking_time')
+        instance.save()
+        instance.tags.set('tags')
+        return instance
 
+
+class FavoriteSerializer(serializers.ModelSerializer):
+
+    name = ReadOnlyField(source= 'recipes.name')
+    cooking_time = ReadOnlyField(source='recipes.cooking_time')
+    image =  Base64ImageField(read_only=True, source='recipes.image')
+
+    class Meta:
+        model = Favorite
+        fields = ('id', 
+                  'name',
+                  'cooking_time',
+                  'image',)
