@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
+
 from djoser.views import UserViewSet
 
 from rest_framework import generics, status, viewsets, filters
@@ -11,13 +13,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .permissions import AdminOrAuthorOrReadOnly
+from .filters import RecipeFilter
 from users.models import Subscribe
-from recipes.models import Favorite, Ingredient, Recipe, Tag
+from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
 from .serializers import (IngredientSerializer, SubscribeGetUserSerializer,
                           SubscribeSerializer, SubscribeUserSerializer,
                           TagSerializer, UserRegistrationSerializer,
                           RecipeSerializer, RecipeCreateSerializer,
-                          FavoriteSerializer,)
+                          FavoriteSerializer, ShoppingCartSerializer)
 
 
 User = get_user_model()
@@ -32,6 +35,8 @@ class UserModelViewSet(UserViewSet):
 
 
 class SubscribeCreateDeleteView(APIView):
+
+    permission_classes = [IsAuthenticated, ]
 
     def get(self, request, id):
 
@@ -115,6 +120,38 @@ class FavoriteCreateDeleteView(APIView):
         return Response(status=status.HTTP_200_OK)
 
 
+class ShoppingCartCreateDeleteView(APIView):
+
+    permission_classes = [IsAuthenticated, ]
+
+    def get(self, request, id):
+
+        recipe = get_object_or_404(Recipe, id=id)
+        user = request.user
+
+        if ShoppingCart.objects.filter(user=user, 
+                                       recipe=recipe).exists():
+            return Response('Вы уже добавили рецепт в список покупок.',)
+        ShoppingCart.objects.get_or_create(recipe=recipe, 
+                                           user=user,)
+
+        shop_cart = ShoppingCart.objects.get(recipe=recipe, 
+                                             user=user)                            
+        serializer = ShoppingCartSerializer(shop_cart)
+
+        return Response(serializer.data, 
+                        status=status.HTTP_201_CREATED)
+
+    def delete(self, request, id):
+        recipe = get_object_or_404(Recipe, id=id)
+        user = request.user
+
+        shop_cart = get_object_or_404(ShoppingCart, 
+                                      recipe=recipe,
+                                      user=user)
+        shop_cart.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class IngredientApiViewSet(viewsets.ViewSet):
     
@@ -136,30 +173,15 @@ class IngredientApiViewSet(viewsets.ViewSet):
 
 class RecipeModelViewSet(viewsets.ModelViewSet):
 
+    #filter_backends = (DjangoFilterBackend,)
+    filter_class = RecipeFilter
     permission_classes = [AdminOrAuthorOrReadOnly]
     queryset = Recipe.objects.all()
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
-            return RecipeSerializer
-        if self.action in ['create', 'update']:    
-            return RecipeCreateSerializer
+            return RecipeSerializer    
+        return RecipeCreateSerializer
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
-
-    def destroy(self, request, pk, **kwargs):
-        recipe = Recipe.objects.get(pk=pk)
-        recipe.delete()
-        return Response(status=status.HTTP_200)
-
-    def update(self, request, pk):
-        recipe = self.get_object()
-        recipe.id = pk
-        recipe.save()
-        serializer = RecipeSerializer(recipe, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        recipe = serializer.save()
-        serializer = RecipeCreateSerializer(recipe)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-

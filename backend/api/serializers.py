@@ -7,7 +7,7 @@ from djoser.serializers import \
     UserCreateSerializer as BaseUserRegistrationSerializer
 from djoser.serializers import UserSerializer as BaseUserSerializer
 from drf_extra_fields.fields import Base64ImageField
-from recipes.models import Ingredient, IngredientRecipe, Recipe, Tag, Favorite
+from recipes.models import Ingredient, IngredientRecipe, Recipe, ShoppingCart, Tag, Favorite
 from rest_framework import serializers
 from rest_framework.serializers import ReadOnlyField
 from rest_framework.validators import UniqueTogetherValidator, UniqueValidator
@@ -107,18 +107,19 @@ class TagSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tag
-        fields = ('id', 'name', 'color', 'slug')
+        fields = ('id', 
+                  'name', 
+                  'color', 
+                  'slug')
 
 
 class IngredientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ingredient
-        fields = (
-            'id',
-            'name',
-            'measurement_unit',
-        )
+        fields = ('id',
+                  'name',
+                  'measurement_unit',)
 
 
 class AddIngredientSerializer(serializers.Serializer):
@@ -135,37 +136,49 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = IngredientRecipe
-        fields = (
-            'id',
-            'name',
-            'measurement_unit',
-            'amount',
-        )
+        fields = ('id',
+                  'name',
+                  'measurement_unit',
+                  'amount',)
 
 
 class RecipeSerializer(serializers.ModelSerializer):
     ingredients = serializers.SerializerMethodField()
     tags = TagSerializer(many=True)
     author = UserSerializer(read_only=True)
+    is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe
-        fields = (
-            'id',
-            'tags',
-            'author',
-            'ingredients',
-            # 'is_favorited',
-            # 'is_in_shopping_cart',
-            'name',
-            'image',
-            'text',
-            'cooking_time',
-        )
+        fields = ('id',
+                  'tags',
+                  'author',
+                  'ingredients',
+                  'is_favorited',
+                  'is_in_shopping_cart',
+                  'name',
+                  'image',
+                  'text',
+                  'cooking_time',)
 
     def get_ingredients(self, recipe):
         queryset = IngredientRecipe.objects.filter(recipe=recipe)
         return RecipeIngredientSerializer(queryset, many=True).data
+
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if not request.user.is_authenticated:
+            return False
+        user = self.context.get('request').user
+        return Favorite.objects.filter(recipes=obj, user=user).exists()
+
+    def get_is_in_shopping_cart(self, obj):
+        request = self.context.get('request')
+        if not request.user.is_authenticated:
+            return False
+        user = self.context.get('request').user
+        return ShoppingCart.objects.filter(recipe=obj, user=user).exists()
 
 
 class RecipeCreateSerializer(serializers.ModelSerializer):
@@ -178,14 +191,12 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipe
-        fields = (
-            'ingredients',
-            'tags',
-            'image',
-            'name',
-            'text',
-            'cooking_time',
-        )
+        fields = ('ingredients',
+                  'tags',
+                  'image',
+                  'name',
+                  'text',
+                  'cooking_time',)
 
     def to_representation(self, recipe):
         return RecipeSerializer(
@@ -212,24 +223,28 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             )
         return recipe
 
-    def update(self, instance, validated_data):
-        
+    def update(self, recipe, validated_data):
+
         ingredients = validated_data.pop('ingredients')
-        IngredientRecipe.objects.filter(recipe=instance).delete()
-        for new_ingredient in ingredients:
+        tags = validated_data.pop('tags')
+        IngredientRecipe.objects.filter(recipe=recipe).delete()
+        for ingredient in ingredients:
             IngredientRecipe.objects.create(
-                id=new_ingredient['id'],
-                recipe=instance,
-                amount=new_ingredient['amount']
+                recipe=recipe,
+                ingredient=get_object_or_404(Ingredient, id=ingredient['id']),
+                amount=ingredient['amount']
             )
-        instance.name = validated_data.pop('name')
-        instance.text = validated_data.pop('text')
-        if validated_data.get('image') is not None:
-            instance.image = validated_data.pop('image')
-        instance.cooking_time = validated_data.pop('cooking_time')
-        instance.save()
-        instance.tags.set('tags')
-        return instance
+
+        recipe.tags.remove()
+        recipe.tags.set(tags)
+
+        recipe.image = validated_data['image']
+        recipe.name = validated_data['name']
+        recipe.text = validated_data['text']
+        recipe.cooking_time = validated_data['cooking_time']
+        recipe.save()
+        return recipe
+
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
@@ -240,6 +255,20 @@ class FavoriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Favorite
+        fields = ('id', 
+                  'name',
+                  'cooking_time',
+                  'image',)
+
+
+class ShoppingCartSerializer(serializers.ModelSerializer):
+
+    name = ReadOnlyField(source='recipe.name')
+    cooking_time = ReadOnlyField(source='recipe.cooking_time')
+    image =  Base64ImageField(read_only=True, source='recipe.image')
+
+    class Meta:
+        model = ShoppingCart
         fields = ('id', 
                   'name',
                   'cooking_time',

@@ -36,7 +36,8 @@ class Recipe(models.Model):
                               null=True)
     text = models.TextField()
     ingredients = models.ManyToManyField(Ingredient,
-                                         through='IngredientRecipe',)
+                                         through='IngredientRecipe',
+                                         blank=True)
     tags = models.ManyToManyField(Tag)
     cooking_time = models.PositiveIntegerField()
 
@@ -65,3 +66,18 @@ class Favorite(models.Model):
 
     class Meta:
         verbose_name = 'Избранное'
+
+
+class ShoppingCart(models.Model):
+
+    recipe = models.ForeignKey(Recipe,
+                                on_delete=models.CASCADE,
+                                verbose_name='Рецепт'
+    )
+    user = models.ForeignKey(User,
+                             on_delete=models.CASCADE,
+                             verbose_name='Пользователь'
+    )
+
+    class Meta:
+        verbose_name = 'Список покупок'
