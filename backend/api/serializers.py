@@ -78,18 +78,6 @@ class SubscribeUserSerializer(serializers.ModelSerializer):
                   'last_name',)
 
 
-class SubscribeSerializer(serializers.ModelSerializer):
-
-    author = SubscribeUserSerializer(required=True)
-
-    class Meta:
-        model = Subscribe
-        fields = ("author",)
-        validators = [UniqueTogetherValidator(
-            queryset=Subscribe.objects.all(),
-            fields=['subscriber', 'author'])]
-
-
 class UserSerializer(DjoserUserSerializer):
 
     class Meta:
@@ -273,3 +261,53 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
                   'name',
                   'cooking_time',
                   'image',)
+
+
+class FollowersListSerializer(serializers.ModelSerializer):
+
+    recipes = RecipeSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('email', 
+                  'id', 
+                  'username', 
+                  'first_name',
+                  'last_name',  
+                  'recipes',)
+
+
+class SubscribeSerializer(serializers.ModelSerializer):
+
+    author = SubscribeUserSerializer(required=True)
+    recipes = RecipeSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Subscribe
+        fields = ("author", "recipes")
+        validators = [UniqueTogetherValidator(
+            queryset=Subscribe.objects.all(),
+            fields=['subscriber', 'author'])]
+
+
+class ShowFollowerRecipeSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(
+        max_length=None,
+        required=True,
+        allow_empty_file=False,
+        use_url=True,
+    )
+
+    class Meta:
+        model = Recipe
+        fields = ('id', 'name', 'image', 'cooking_time')
+
+
+class ShowFollowersSerializer(serializers.ModelSerializer):
+
+    recipes = ShowFollowerRecipeSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('email', 'id', 'username', 'first_name',
+                  'last_name', 'is_subscribed', 'recipes', 'recipes_count')

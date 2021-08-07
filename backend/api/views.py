@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
+from django.http import HttpResponse
 
 from djoser.views import UserViewSet
 
@@ -15,12 +16,13 @@ from rest_framework.views import APIView
 from .permissions import AdminOrAuthorOrReadOnly
 from .filters import RecipeFilter
 from users.models import Subscribe
-from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
+from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag, IngredientRecipe
 from .serializers import (IngredientSerializer, SubscribeGetUserSerializer,
                           SubscribeSerializer, SubscribeUserSerializer,
                           TagSerializer, UserRegistrationSerializer,
                           RecipeSerializer, RecipeCreateSerializer,
-                          FavoriteSerializer, ShoppingCartSerializer)
+                          FavoriteSerializer, ShoppingCartSerializer,
+                          FollowersListSerializer, UserSerializer, ShowFollowersSerializer)
 
 
 User = get_user_model()
@@ -32,6 +34,14 @@ class UserModelViewSet(UserViewSet):
     queryset = User.objects.all()
     lookup_field = 'username'
     search_fields = ('username',)
+
+    @action(detail=False)
+    def subscriptions(self, request):
+        user = self.request.user
+        follow = Subscribe.objects.filter(user=user)
+        serializer = SubscribeSerializer(instance=follow,
+                                         context={'request': request})
+        return Response(serializer.data)
 
 
 class SubscribeCreateDeleteView(APIView):
@@ -65,14 +75,27 @@ class SubscribeCreateDeleteView(APIView):
         return Response(status=status.HTTP_200_OK)
 
 
-class SubscribeListView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated, ]
-    serializer_class = SubscribeSerializer
-    allowed_methods = ['GET', ]
+class SubscribeListViewSet(viewsets.ViewSet):
 
-    def get_queryset(self):
-        return Subscribe.objects.filter(subscriber=self.request.user)
-    
+    permission_classes = [IsAuthenticated, ]
+
+    def list(self, request):
+        queryset = Subscribe.objects.filter(subscriber=self.request.user)
+        serializer = SubscribeSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+@api_view(['GET', ])
+@permission_classes([IsAuthenticated])
+def showfollows(request):
+    user_obj = User.objects.filter(following__user=request.user)
+    paginator = PageNumberPagination()
+    paginator.page_size = 10
+    result_page = paginator.paginate_queryset(user_obj, request)
+    serializer = ShowFollowersSerializer(
+        result_page, many=True, context={'current_user': request.user})
+    return paginator.get_paginated_response(serializer.data)
+
 
 class TagApiViewSet(viewsets.ViewSet):
 
@@ -185,3 +208,39 @@ class RecipeModelViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+
+class DownloadPurchaseList(APIView):
+    permission_classes = [IsAuthenticated, ]
+
+    def get(self, request):
+        user = request.user
+        shopping_cart = user.shoppingcart.all()
+        purchase_list = {}
+        for record in shopping_cart:
+            recipe = record.recipe
+            ingredients = IngredientRecipe.objects.filter(recipe=recipe)
+            for ingredient in ingredients:
+                amount = ingredient.amout
+                name = ingredient.name
+                measurement_unit = ingredient.measurement_unit
+                if name is not purchase_list:
+                    purchase_list[name] = {
+                        'measurement_unit': measurement_unit,
+                        'amount': amount
+                    }
+                else:
+                    purchase_list[name]['amount'] = (
+                        purchase_list[name]['amount'] + amount
+                    )
+        wishlist = []
+        for item in purchase_list:
+            wishlist.append(
+                f'{item} - {purchase_list[item]["amount"]}'
+                f'{purchase_list[item]["measurement_unit"]}/n'
+            )
+        wishlist.append('/n')
+        wishlist.append('FoodGram, 2021')
+        response = HttpResponse(wishlist, 'Content-Type: application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="wishlist.pdf"'
+        return response
