@@ -9,7 +9,8 @@ from drf_extra_fields.fields import Base64ImageField
 from recipes.models import Ingredient, IngredientRecipe, Recipe, ShoppingCart, Tag, Favorite
 from rest_framework import serializers
 from rest_framework.serializers import ReadOnlyField
-from users.models import Subscribe
+from rest_framework.validators import UniqueTogetherValidator
+from users.models import Follow
 
 
 User = get_user_model()
@@ -29,7 +30,6 @@ class UserRegistrationSerializer(DjoserRegistrationSerializer):
 
 
 class UserSerializer(DjoserUserSerializer):
-
     is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
@@ -43,32 +43,38 @@ class UserSerializer(DjoserUserSerializer):
             'is_subscribed',
         )
 
-    '''def get_is_subscribed(self, user):
+    def get_is_subscribed(self, user):
         author = self.context['request'].user
         if not author.is_authenticated:
             return False
-        return Subscribe.objects.filter(subscriber=user, 
-                                        author=author).exists()'''
+        return Follow.objects.filter(user=user, author=author).exists()
 
-    def get_is_subscribed(self, obj):
+    '''def get_is_subscribed(self, obj):
         request = self.context.get('request')
         if request is None or request.user.is_anonymous:
             return False
-        return Subscribe.objects.filter(subscriber=request.user, author=obj).exists()
+        return Follow.objects.filter(subscriber=request.user, author=obj).exists()'''
 
 
 class FollowSerializer(UserSerializer):
 
     class Meta:
-        model = User
-        fields = (
-            'id',
-            'email',
-            'username',
-            'first_name',
-            'last_name',
-            'is_subscribed',
-        )
+        model = Follow
+        fields = ('user', 'author')
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Follow.objects.all(),
+                fields=('user', 'author'),
+                message='Follow object with given credentials already exists',
+            )
+        ]
+
+    def validate(self, data):
+        if data['user'] == data['author']:
+            raise serializers.ValidationError(
+                'You cannot subscribe/unsubscribe to yourself'
+            )
+        return data
 
 
 class TagSerializer(serializers.ModelSerializer):

@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from django.http import HttpResponse
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
 from djoser.views import UserViewSet as DjoserUserViewSet
 
@@ -14,7 +15,7 @@ from rest_framework.views import APIView
 
 from .permissions import AdminOrAuthorOrReadOnly
 from .filters import RecipeFilter
-from users.models import Subscribe
+from users.models import Follow
 from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag, IngredientRecipe
 from .serializers import (IngredientSerializer, 
                           TagSerializer,
@@ -35,63 +36,41 @@ class UserViewSet(DjoserUserViewSet):
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     @action(
-        detail=False,
-        serializer_class=FollowSerializer,
-    )
-    def subscriptions(self, request):
-        return self.list(request)
-
-    @action(
         methods=['get', 'delete'],
         detail=True,
         serializer_class=FollowSerializer,
     )
     def subscribe(self, request, id):
-        subscriber = request.user
+        user = request.user
         author = get_object_or_404(User, id=id)
 
-        if subscriber == author:
-            return Response(
-                {'errors': 'You cannot subscribe/unsubscribe to yourself'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        follow = Subscribe.objects.filter(
-            subscriber=subscriber,
-            author=author,
-        ).first()
-
         if request.method == 'GET':
-            if follow is not None:
-                return Response(
-                    {
-                        'errors': (
-                            'Follow object with given credentials '
-                            'already exists'
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            follow = Subscribe.objects.create(
-                subscriber=subscriber,
-                author=author,
-            )
-            follow.save()
-            serializer = self.get_serializer(author)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            data = {'user': user.id, 'author': id}
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            output = UserSerializer(author, context={'request': request})
+            return Response(output.data, status=status.HTTP_201_CREATED)
 
-        if follow is None:
-            return Response(
-                {'errors': 'Follow object does not exist'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        try:
+            follow = Follow.objects.get(user=user, author=author)
+        except ObjectDoesNotExist:
+            raise ValidationError({'errors': 'Follow object does not exist'})
+
         follow.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        detail=False,
+        serializer_class=UserSerializer,
+    )
+    def subscriptions(self, request):
+        return self.list(request)
 
     def get_queryset(self):
         if self.action == 'subscriptions':
             return User.objects.filter(
-                following__subscriber=self.request.user
+                following__user=self.request.user
             )
         return self.queryset
 

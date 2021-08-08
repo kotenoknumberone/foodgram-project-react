@@ -24,16 +24,21 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
-class Subscribe(models.Model):
-
-    subscriber = models.ForeignKey(
-                                User, 
-                                related_name='follower',
-                                on_delete=models.CASCADE)
-    author = models.ForeignKey(
-                            User, 
-                            related_name='following',
-                            on_delete=models.CASCADE)
+class Follow(models.Model):
     
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='followers',
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='following',
+    )
+
     class Meta:
-       unique_together = ("subscriber", "author")
+        unique_together = ('user', 'author')
+
+    def __str__(self):
+        return f'{self.user} / {self.author}'
