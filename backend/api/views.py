@@ -31,8 +31,8 @@ class UserModelViewSet(UserViewSet):
 
     serializer_class = UserRegistrationSerializer
     queryset = User.objects.all()
-    lookup_field = 'username'
-    search_fields = ('username',)
+    #lookup_field = 'username'
+    #search_fields = ('username',)
 
     @action(
         detail=False,
@@ -41,6 +41,53 @@ class UserModelViewSet(UserViewSet):
     def subscriptions(self, request):
         return self.list(request)
 
+    @action(
+        methods=['get', 'delete'],
+        detail=True,
+        serializer_class=FollowSerializer,
+    )
+    def subscribe(self, request, id):
+        user = request.user
+        author = get_object_or_404(User, id=id)
+
+        if user == author:
+            return Response(
+                {'errors': 'You cannot subscribe/unsubscribe to yourself'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        follow = Subscribe.objects.filter(
+            subscriber=user,
+            author=author,
+        ).first()
+
+        if request.method == 'GET':
+            if follow is not None:
+                return Response(
+                    {
+                        'errors': (
+                            'Follow object with given credentials '
+                            'already exists'
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            follow = Subscribe.objects.create(
+                subscriber=user,
+                author=author,
+            )
+            follow.save()
+            serializer = self.get_serializer(author)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        if follow is None:
+            return Response(
+                {'errors': 'Follow object does not exist'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        follow.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     def get_queryset(self):
         if self.action == 'subscriptions':
             return User.objects.filter(
@@ -48,7 +95,7 @@ class UserModelViewSet(UserViewSet):
             )
         return self.queryset
 
-class SubscribeCreateDeleteView(APIView):
+'''class SubscribeCreateDeleteView(APIView):
 
     permission_classes = [IsAuthenticated, ]
 
@@ -76,7 +123,7 @@ class SubscribeCreateDeleteView(APIView):
                                       author=author,
                                       subscriber=subscriber)
         subscribe.delete()
-        return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_200_OK)'''
 
 
 class TagApiViewSet(viewsets.ViewSet):
