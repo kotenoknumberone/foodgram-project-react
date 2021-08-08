@@ -195,21 +195,28 @@ class RecipeModelViewSet(viewsets.ModelViewSet):
     def download_shopping_cart(self, request):
         shopping_cart = ShoppingCart.objects.filter(user=request.user)
         purchase_list = {}
-
+        
         for record in shopping_cart:
             recipe = record.recipe
             ingredients = IngredientRecipe.objects.filter(recipe=recipe)
             for ingredient in ingredients:
-                ingredient = ingredient.ingredient
-                
-            purchase_list[ingredient] = (
-                purchase_list[ingredient]
+                amount = ingredient.amount
+                name = ingredient.ingredient.name
+                measurement_unit = ingredient.ingredient.measurement_unit
+                if name is not purchase_list:
+                    purchase_list[name] = {
+                        'measurement_unit': measurement_unit,
+                        'amount': amount
+                    }
+                else:
+                    purchase_list[name]['amount'] = (
+                        purchase_list[name]['amount'] + amount
                     )
         wishlist = []
         for item in purchase_list:
             wishlist.append(
-                f'{item} - {purchase_list[item]["ingredient"]}'
-                f'{purchase_list[item]["ingredient"]}/n'
+                f'{item} - {purchase_list[item]["amount"]}'
+                f'{purchase_list[item]["measurement_unit"]}/n'
             )
         wishlist.append('/n')
         wishlist.append('FoodGram, 2021')

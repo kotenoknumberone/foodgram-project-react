@@ -62,7 +62,7 @@ class UserSerializer(DjoserUserSerializer):
             'recipes_count',
         )
     #def get_recipe(self, obj):
-    #    author = User.objects.all().filter(following__user=obj)
+    #    author = User.objects.all().get(=o)
     #    recipes = Recipe.objects.filter(author=author)
     #    return ShowAuthorRecipeSerializer(recipes, many=True).data
 
