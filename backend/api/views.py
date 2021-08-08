@@ -18,11 +18,10 @@ from .filters import RecipeFilter
 from users.models import Subscribe
 from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag, IngredientRecipe
 from .serializers import (IngredientSerializer, SubscribeGetUserSerializer,
-                          SubscribeSerializer, SubscribeUserSerializer,
                           TagSerializer, UserRegistrationSerializer,
                           RecipeSerializer, RecipeCreateSerializer,
                           FavoriteSerializer, ShoppingCartSerializer,
-                          FollowersListSerializer, UserSerializer, ShowFollowersSerializer)
+                          FollowSerializer)
 
 
 User = get_user_model()
@@ -35,14 +34,19 @@ class UserModelViewSet(UserViewSet):
     lookup_field = 'username'
     search_fields = ('username',)
 
-    @action(detail=False)
+    @action(
+        detail=False,
+        serializer_class=FollowSerializer,
+    )
     def subscriptions(self, request):
-        user = self.request.user
-        follow = Subscribe.objects.filter(user=user)
-        serializer = SubscribeSerializer(instance=follow,
-                                         context={'request': request})
-        return Response(serializer.data)
+        return self.list(request)
 
+    def get_queryset(self):
+        if self.action == 'subscriptions':
+            return User.objects.filter(
+                following__user=self.request.user
+            )
+        return self.queryset
 
 class SubscribeCreateDeleteView(APIView):
 
@@ -73,28 +77,6 @@ class SubscribeCreateDeleteView(APIView):
                                       subscriber=subscriber)
         subscribe.delete()
         return Response(status=status.HTTP_200_OK)
-
-
-class SubscribeListViewSet(viewsets.ViewSet):
-
-    permission_classes = [IsAuthenticated, ]
-
-    def list(self, request):
-        queryset = Subscribe.objects.filter(subscriber=self.request.user)
-        serializer = SubscribeSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-
-@api_view(['GET', ])
-@permission_classes([IsAuthenticated])
-def showfollows(request):
-    user_obj = User.objects.filter(following__user=request.user)
-    paginator = PageNumberPagination()
-    paginator.page_size = 10
-    result_page = paginator.paginate_queryset(user_obj, request)
-    serializer = ShowFollowersSerializer(
-        result_page, many=True, context={'current_user': request.user})
-    return paginator.get_paginated_response(serializer.data)
 
 
 class TagApiViewSet(viewsets.ViewSet):

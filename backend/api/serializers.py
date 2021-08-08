@@ -263,19 +263,6 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
                   'image',)
 
 
-class FollowersListSerializer(serializers.ModelSerializer):
-
-    recipes = RecipeSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = User
-        fields = ('email', 
-                  'id', 
-                  'username', 
-                  'first_name',
-                  'last_name',  
-                  'recipes',)
-
 
 class SubscribeSerializer(serializers.ModelSerializer):
 
@@ -300,7 +287,10 @@ class ShowFollowerRecipeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipe
-        fields = ('id', 'name', 'image', 'cooking_time')
+        fields = ('id', 
+                  'name', 
+                  'image', 
+                  'cooking_time')
 
 
 class ShowFollowersSerializer(serializers.ModelSerializer):
@@ -309,5 +299,23 @@ class ShowFollowersSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('email', 'id', 'username', 'first_name',
-                  'last_name', 'is_subscribed', 'recipes', 'recipes_count')
+        fields = ('email', 
+                  'id', 
+                  'username', 
+                  'first_name',
+                  'last_name', 
+                  'recipes',)
+
+
+class FollowSerializer(UserSerializer):
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'email',
+            'username',
+            'first_name',
+            'last_name',
+            'is_subscribed',
+        )
