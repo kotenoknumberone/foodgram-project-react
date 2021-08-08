@@ -29,8 +29,25 @@ class UserRegistrationSerializer(DjoserRegistrationSerializer):
         )
 
 
+class ShowAuthorRecipeSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(
+        max_length=None,
+        required=True,
+        allow_empty_file=False,
+        use_url=True,
+    )
+
+    class Meta:
+        model = Recipe
+        fields = ('id', 'name', 'image', 'cooking_time')
+
+
 class UserSerializer(DjoserUserSerializer):
+
     is_subscribed = serializers.SerializerMethodField()
+    recipes = ShowAuthorRecipeSerializer(many=True, read_only=True)
+    #recipes = serializers.SerializerMethodField('get_recipe')
+    recipes_count = serializers.SerializerMethodField('get_author_recipes')
 
     class Meta:
         model = User
@@ -41,7 +58,13 @@ class UserSerializer(DjoserUserSerializer):
             'first_name',
             'last_name',
             'is_subscribed',
+            'recipes',
+            'recipes_count',
         )
+    #def get_recipe(self, obj):
+    #    author = User.objects.all().filter(following__user=obj)
+    #    recipes = Recipe.objects.filter(author=author)
+    #    return ShowAuthorRecipeSerializer(recipes, many=True).data
 
     def get_is_subscribed(self, user):
         author = self.context['request'].user
@@ -49,11 +72,10 @@ class UserSerializer(DjoserUserSerializer):
             return False
         return Follow.objects.filter(user=user, author=author).exists()
 
-    '''def get_is_subscribed(self, obj):
-        request = self.context.get('request')
-        if request is None or request.user.is_anonymous:
-            return False
-        return Follow.objects.filter(subscriber=request.user, author=obj).exists()'''
+    def get_author_recipes(self, user):
+        recipes = Recipe.objects.all().filter(author=user)
+        return len(recipes)
+
 
 
 class FollowSerializer(UserSerializer):

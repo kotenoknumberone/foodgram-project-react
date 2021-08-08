@@ -1,40 +1,25 @@
 from django.urls import include, path
 
-from rest_framework.routers import DefaultRouter, SimpleRouter
+from rest_framework.routers import DefaultRouter
 
 from .views import (IngredientApiViewSet, 
                     TagApiViewSet, UserViewSet,
                     RecipeModelViewSet, FavoriteCreateDeleteView,
-                    ShoppingCartCreateDeleteView,
-                    DownloadPurchaseList,)
+                    ShoppingCartCreateDeleteView,)
 
 router = DefaultRouter()
 router.register('users', UserViewSet, 'users')
-#router.register('tags', TagApiViewSet, 'tags')
-#router.register('ingredients', IngredientApiViewSet, 'ingredients')
-#router.register('recipes', RecipeModelViewSet, 'recipes')
+router.register('tags', TagApiViewSet, 'tags')
+router.register('ingredients', IngredientApiViewSet, 'ingredients')
+router.register('recipes', RecipeModelViewSet, 'recipes')
 
 
 urlpatterns = [
     path('', include(router.urls)),
-
-    #path('users/<int:id>/subscribe/', 
-    #     SubscribeCreateDeleteView.as_view(), 
-    #     name='subscribe'),    
-    #path('users/subscriptions', 
-    #   SubscribeListViewSet.as_view(), 
-    #    name='subscribes_list'),
-    #path('recipes/<int:id>/favorite/', 
-    #     FavoriteCreateDeleteView.as_view(), 
-    #     name='favorite'),
-    #path('recipes/<int:id>/shopping_cart/', 
-    #     ShoppingCartCreateDeleteView.as_view(), 
-    #     name='shopping_cart'),
-    #path('recipes/download_shopping_cart',
-    #     DownloadPurchaseList.as_view(), name='dowload_shopping_cart'),
+    path('recipes/<int:id>/favorite/', 
+        FavoriteCreateDeleteView.as_view(), 
+         name='favorite'),
+    path('recipes/<int:id>/shopping_cart/', 
+         ShoppingCartCreateDeleteView.as_view(), 
+         name='shopping_cart'),
 ]     
-
-#не работает избранное, подписки
-#
-#
-#

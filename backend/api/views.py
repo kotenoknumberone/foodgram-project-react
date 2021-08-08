@@ -187,35 +187,29 @@ class RecipeModelViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-
-class DownloadPurchaseList(APIView):
-    permission_classes = [IsAuthenticated, ]
-
-    def get(self, request):
-        user = request.user
-        shopping_cart = user.shoppingcart.all()
+    @action(
+        methods=['get'],
+        detail=False,
+        permission_classes=(IsAuthenticated,),
+    )
+    def download_shopping_cart(self, request):
+        shopping_cart = ShoppingCart.objects.filter(user=request.user)
         purchase_list = {}
+
         for record in shopping_cart:
             recipe = record.recipe
             ingredients = IngredientRecipe.objects.filter(recipe=recipe)
             for ingredient in ingredients:
-                amount = ingredient.amout
-                name = ingredient.name
-                measurement_unit = ingredient.measurement_unit
-                if name is not purchase_list:
-                    purchase_list[name] = {
-                        'measurement_unit': measurement_unit,
-                        'amount': amount
-                    }
-                else:
-                    purchase_list[name]['amount'] = (
-                        purchase_list[name]['amount'] + amount
+                ingredient = ingredient.ingredient
+                
+            purchase_list[ingredient] = (
+                purchase_list[ingredient]
                     )
         wishlist = []
         for item in purchase_list:
             wishlist.append(
-                f'{item} - {purchase_list[item]["amount"]}'
-                f'{purchase_list[item]["measurement_unit"]}/n'
+                f'{item} - {purchase_list[item]["ingredient"]}'
+                f'{purchase_list[item]["ingredient"]}/n'
             )
         wishlist.append('/n')
         wishlist.append('FoodGram, 2021')
