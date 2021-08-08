@@ -1,32 +1,23 @@
 from django.contrib.auth import get_user_model
 from django.db.models import fields
 from django.shortcuts import get_object_or_404
-from django.core.exceptions import ObjectDoesNotExist
 
-from djoser.serializers import \
-    UserCreateSerializer as BaseUserRegistrationSerializer
-from djoser.serializers import UserSerializer as BaseUserSerializer
+from djoser.serializers import UserCreateSerializer as DjoserRegistrationSerializer
+from djoser.serializers import UserSerializer as DjoserUserSerializer
 from drf_extra_fields.fields import Base64ImageField
+
 from recipes.models import Ingredient, IngredientRecipe, Recipe, ShoppingCart, Tag, Favorite
 from rest_framework import serializers
 from rest_framework.serializers import ReadOnlyField
-from rest_framework.validators import UniqueTogetherValidator, UniqueValidator
 from users.models import Subscribe
 
 
 User = get_user_model()
 
 
-class UserRegistrationSerializer(BaseUserRegistrationSerializer):
+class UserRegistrationSerializer(DjoserRegistrationSerializer):
 
-    email = serializers.EmailField(
-        validators=[UniqueValidator(queryset=User.objects.all())]
-    )
-    username = serializers.CharField(
-        validators=[UniqueValidator(queryset=User.objects.all())],
-    )
-
-    class Meta(BaseUserRegistrationSerializer.Meta):
+    class Meta(DjoserRegistrationSerializer.Meta):
         fields = (
             'id',
             'first_name',
@@ -37,49 +28,10 @@ class UserRegistrationSerializer(BaseUserRegistrationSerializer):
         )
 
 
-class DjoserUserSerializer(BaseUserSerializer):
-
-    class Meta(BaseUserSerializer.Meta):
-        fields = (
-            'id',
-            'first_name',
-            'last_name',
-            'username',
-            'email',
-        )
-
-
-class SubscribeGetUserSerializer(serializers.ModelSerializer):
-
-    is_subscribed = serializers.SerializerMethodField('get_is_subscribed')
-
-    def get_is_subscribed(self, obj):
-        user = Subscribe.objects.get(author=obj).subscriber
-        return Subscribe.objects.filter(subscriber=user, author=obj).exists()
-
-    class Meta:
-        model = User
-        fields = ('email', 
-                  'id', 
-                  'username',
-                  'first_name', 
-                  'last_name', 
-                  'is_subscribed')
-
-
-class SubscribeUserSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = User
-        fields = ('email', 
-                  'id', 
-                  'username',
-                  'first_name', 
-                  'last_name',)
-
-
 class UserSerializer(DjoserUserSerializer):
 
+    is_subscribed = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = (
@@ -88,6 +40,34 @@ class UserSerializer(DjoserUserSerializer):
             'username',
             'first_name',
             'last_name',
+            'is_subscribed',
+        )
+
+    '''def get_is_subscribed(self, user):
+        author = self.context['request'].user
+        if not author.is_authenticated:
+            return False
+        return Subscribe.objects.filter(subscriber=user, 
+                                        author=author).exists()'''
+
+    def get_is_subscribed(self, obj):
+        request = self.context.get('request')
+        if request is None or request.user.is_anonymous:
+            return False
+        return Subscribe.objects.filter(subscriber=request.user, author=obj).exists()
+
+
+class FollowSerializer(UserSerializer):
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'email',
+            'username',
+            'first_name',
+            'last_name',
+            'is_subscribed',
         )
 
 
@@ -234,7 +214,6 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         return recipe
 
 
-
 class FavoriteSerializer(serializers.ModelSerializer):
 
     name = ReadOnlyField(source= 'recipes.name')
@@ -263,59 +242,3 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
                   'image',)
 
 
-
-class SubscribeSerializer(serializers.ModelSerializer):
-
-    author = SubscribeUserSerializer(required=True)
-    recipes = RecipeSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Subscribe
-        fields = ("author", "recipes")
-        validators = [UniqueTogetherValidator(
-            queryset=Subscribe.objects.all(),
-            fields=['subscriber', 'author'])]
-
-
-class ShowFollowerRecipeSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField(
-        max_length=None,
-        required=True,
-        allow_empty_file=False,
-        use_url=True,
-    )
-
-    class Meta:
-        model = Recipe
-        fields = ('id', 
-                  'name', 
-                  'image', 
-                  'cooking_time')
-
-
-class ShowFollowersSerializer(serializers.ModelSerializer):
-
-    recipes = ShowFollowerRecipeSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = User
-        fields = ('email', 
-                  'id', 
-                  'username', 
-                  'first_name',
-                  'last_name', 
-                  'recipes',)
-
-
-class FollowSerializer(UserSerializer):
-
-    class Meta:
-        model = User
-        fields = (
-            'id',
-            'email',
-            'username',
-            'first_name',
-            'last_name',
-            'is_subscribed',
-        )

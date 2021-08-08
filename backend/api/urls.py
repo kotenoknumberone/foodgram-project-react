@@ -3,13 +3,13 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
 from .views import (IngredientApiViewSet, 
-                    TagApiViewSet, UserModelViewSet,
+                    TagApiViewSet, UserViewSet,
                     RecipeModelViewSet, FavoriteCreateDeleteView,
                     ShoppingCartCreateDeleteView,
                     DownloadPurchaseList,)
 
 router = DefaultRouter()
-router.register('users', UserModelViewSet, 'users')
+router.register('users', UserViewSet, 'users')
 #router.register('tags', TagApiViewSet, 'tags')
 #router.register('ingredients', IngredientApiViewSet, 'ingredients')
 #router.register('recipes', RecipeModelViewSet, 'recipes')

@@ -3,11 +3,10 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from django.http import HttpResponse
 
-from djoser.views import UserViewSet
+from djoser.views import UserViewSet as DjoserUserViewSet
 
 from rest_framework import generics, status, viewsets, filters
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import (AllowAny, IsAuthenticated, 
                                         IsAuthenticatedOrReadOnly,)
 from rest_framework.response import Response
@@ -17,22 +16,23 @@ from .permissions import AdminOrAuthorOrReadOnly
 from .filters import RecipeFilter
 from users.models import Subscribe
 from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag, IngredientRecipe
-from .serializers import (IngredientSerializer, SubscribeGetUserSerializer,
-                          TagSerializer, UserRegistrationSerializer,
+from .serializers import (IngredientSerializer, 
+                          TagSerializer,
                           RecipeSerializer, RecipeCreateSerializer,
                           FavoriteSerializer, ShoppingCartSerializer,
-                          FollowSerializer)
+                          FollowSerializer, UserSerializer)
 
 
 User = get_user_model()
 
 
-class UserModelViewSet(UserViewSet):
+class UserViewSet(DjoserUserViewSet):
 
-    serializer_class = UserRegistrationSerializer
-    queryset = User.objects.all()
-    #lookup_field = 'username'
-    #search_fields = ('username',)
+    def destroy(self, request, *args, **kwargs):
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def update(self, request, *args, **kwargs):
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     @action(
         detail=False,
@@ -47,17 +47,17 @@ class UserModelViewSet(UserViewSet):
         serializer_class=FollowSerializer,
     )
     def subscribe(self, request, id):
-        user = request.user
+        subscriber = request.user
         author = get_object_or_404(User, id=id)
 
-        if user == author:
+        if subscriber == author:
             return Response(
                 {'errors': 'You cannot subscribe/unsubscribe to yourself'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         follow = Subscribe.objects.filter(
-            subscriber=user,
+            subscriber=subscriber,
             author=author,
         ).first()
 
@@ -73,7 +73,7 @@ class UserModelViewSet(UserViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             follow = Subscribe.objects.create(
-                subscriber=user,
+                subscriber=subscriber,
                 author=author,
             )
             follow.save()
@@ -91,39 +91,9 @@ class UserModelViewSet(UserViewSet):
     def get_queryset(self):
         if self.action == 'subscriptions':
             return User.objects.filter(
-                following__user=self.request.user
+                following__subscriber=self.request.user
             )
         return self.queryset
-
-'''class SubscribeCreateDeleteView(APIView):
-
-    permission_classes = [IsAuthenticated, ]
-
-    def get(self, request, id):
-
-        author = get_object_or_404(User, id=id)
-        subscriber = request.user
-
-        if Subscribe.objects.filter(subscriber=subscriber, 
-                                    author=author).exists():
-            return Response('Вы уже подписаны',)
-        if subscriber != author:
-            Subscribe.objects.get_or_create(subscriber=subscriber, 
-                                            author=author,)
-            serializer = SubscribeGetUserSerializer(author)
-            return Response(serializer.data, 
-                            status=status.HTTP_200_OK)
-
-    def delete(self, request, id):
-
-        author = get_object_or_404(User, id=id)
-        subscriber = request.user
-
-        subscribe = get_object_or_404(Subscribe, 
-                                      author=author,
-                                      subscriber=subscriber)
-        subscribe.delete()
-        return Response(status=status.HTTP_200_OK)'''
 
 
 class TagApiViewSet(viewsets.ViewSet):
