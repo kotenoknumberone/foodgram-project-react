@@ -1,6 +1,8 @@
+import csv
+
 from django.core.management.base import BaseCommand, CommandError
 from recipes.models import Ingredient
-import csv
+
 
 class Command(BaseCommand):
     help = 'Closes the specified poll for voting'

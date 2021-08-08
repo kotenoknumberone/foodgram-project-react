@@ -29,50 +29,52 @@ User = get_user_model()
 
 class UserViewSet(DjoserUserViewSet):
 
-    def destroy(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def update(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    @action(
-        methods=['get', 'delete'],
-        detail=True,
-        serializer_class=FollowSerializer,
-    )
-    def subscribe(self, request, id):
-        user = request.user
-        author = get_object_or_404(User, id=id)
-
-        if request.method == 'GET':
-            data = {'user': user.id, 'author': id}
-            serializer = self.get_serializer(data=data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            output = UserSerializer(author, context={'request': request})
-            return Response(output.data, status=status.HTTP_201_CREATED)
-
-        try:
-            follow = Follow.objects.get(user=user, author=author)
-        except ObjectDoesNotExist:
-            raise ValidationError({'errors': 'Follow object does not exist'})
-
-        follow.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
     @action(
         detail=False,
         serializer_class=UserSerializer,
+        url_path='subscriptions'
     )
-    def subscriptions(self, request):
+    def following_list(self, request):
         return self.list(request)
 
     def get_queryset(self):
-        if self.action == 'subscriptions':
+        if self.action == 'following_list':
             return User.objects.filter(
                 following__user=self.request.user
             )
         return self.queryset
+
+class SubscribeCreateDeleteView(APIView):
+
+    permission_classes = [IsAuthenticated, ]
+
+    def get(self, request, id):
+
+        author = get_object_or_404(User, id=id)
+        user = request.user
+
+        if Follow.objects.filter(user=user, 
+                                 author=author).exists():
+            return Response('Вы уже подписаны',)
+        if user != author:
+            Follow.objects.get_or_create(user=user, 
+                                         author=author,)
+            follow = Follow.objects.filter(user=user,
+                                           author=author)
+            serializer = FollowSerializer(follow)
+            return Response(serializer.data, 
+                            status=status.HTTP_200_OK)
+
+    def delete(self, request, id):
+
+        author = get_object_or_404(User, id=id)
+        user = request.user
+
+        subscribe = get_object_or_404(Follow, 
+                                      author=author,
+                                      user=user)
+        subscribe.delete()
+        return Response(status=status.HTTP_200_OK)
 
 
 class TagApiViewSet(viewsets.ViewSet):

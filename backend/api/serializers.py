@@ -46,7 +46,6 @@ class UserSerializer(DjoserUserSerializer):
 
     is_subscribed = serializers.SerializerMethodField()
     recipes = ShowAuthorRecipeSerializer(many=True, read_only=True)
-    #recipes = serializers.SerializerMethodField('get_recipe')
     recipes_count = serializers.SerializerMethodField('get_author_recipes')
 
     class Meta:
@@ -61,10 +60,6 @@ class UserSerializer(DjoserUserSerializer):
             'recipes',
             'recipes_count',
         )
-    #def get_recipe(self, obj):
-    #    author = User.objects.all().get(=o)
-    #    recipes = Recipe.objects.filter(author=author)
-    #    return ShowAuthorRecipeSerializer(recipes, many=True).data
 
     def get_is_subscribed(self, user):
         author = self.context['request'].user
@@ -268,5 +263,3 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
                   'name',
                   'cooking_time',
                   'image',)
-
-
