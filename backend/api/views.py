@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from django.http import HttpResponse
+from django.http import HttpResponse, request
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
 from djoser.views import UserViewSet as DjoserUserViewSet
@@ -17,11 +17,11 @@ from .permissions import AdminOrAuthorOrReadOnly
 from .filters import RecipeFilter
 from users.models import Follow
 from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag, IngredientRecipe
-from .serializers import (IngredientSerializer, 
-                          TagSerializer,
-                          RecipeSerializer, RecipeCreateSerializer,
-                          FavoriteSerializer, ShoppingCartSerializer,
-                          FollowSerializer, UserSerializer)
+from .serializers import (CreateRecipeSerializer, IngredientSerializer, SubscribesSerializer, 
+                          TagSerializer,ShoppingCartSerializer,
+                          RecipeSerializer, UserSerializer,
+                          FavoriteSerializer, FollowSerializer,
+                           )
 
 
 User = get_user_model()
@@ -29,13 +29,12 @@ User = get_user_model()
 
 class UserViewSet(DjoserUserViewSet):
 
-    @action(
-        detail=False,
-        serializer_class=UserSerializer,
-        url_path='subscriptions'
-    )
-    def following_list(self, request):
-        return self.list(request)
+    queryset = User.objects.all()
+
+    def get_serializer_class(self, action=None):
+        if self.action == 'subscriptions':
+            return SubscribesSerializer 
+        return UserSerializer
 
     def get_queryset(self):
         if self.action == 'following_list':
@@ -43,6 +42,12 @@ class UserViewSet(DjoserUserViewSet):
                 following__user=self.request.user
             )
         return self.queryset
+
+    @action(detail=False,
+            url_path='subscriptions')
+    def following_list(self, request):
+        return self.list(request)
+
 
 class SubscribeCreateDeleteView(APIView):
 
@@ -55,15 +60,17 @@ class SubscribeCreateDeleteView(APIView):
 
         if Follow.objects.filter(user=user, 
                                  author=author).exists():
-            return Response('Вы уже подписаны',)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
         if user != author:
             Follow.objects.get_or_create(user=user, 
                                          author=author,)
-            follow = Follow.objects.filter(user=user,
-                                           author=author)
+            follow = Follow.objects.get(user=user,
+                                        author=author)
             serializer = FollowSerializer(follow)
             return Response(serializer.data, 
-                            status=status.HTTP_200_OK)
+                            status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
 
     def delete(self, request, id):
 
@@ -74,7 +81,7 @@ class SubscribeCreateDeleteView(APIView):
                                       author=author,
                                       user=user)
         subscribe.delete()
-        return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TagApiViewSet(viewsets.ViewSet):
@@ -176,7 +183,6 @@ class IngredientApiViewSet(viewsets.ViewSet):
 
 class RecipeModelViewSet(viewsets.ModelViewSet):
 
-    #filter_backends = (DjangoFilterBackend,)
     filter_class = RecipeFilter
     permission_classes = [AdminOrAuthorOrReadOnly]
     queryset = Recipe.objects.all()
@@ -184,7 +190,7 @@ class RecipeModelViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
             return RecipeSerializer    
-        return RecipeCreateSerializer
+        return CreateRecipeSerializer
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)

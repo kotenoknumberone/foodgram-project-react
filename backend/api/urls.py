@@ -2,7 +2,7 @@ from django.urls import include, path
 
 from rest_framework.routers import DefaultRouter
 
-from .views import (FollowViewSet, IngredientApiViewSet, 
+from .views import (IngredientApiViewSet, 
                     TagApiViewSet, UserViewSet,
                     RecipeModelViewSet, FavoriteCreateDeleteView,
                     ShoppingCartCreateDeleteView, SubscribeCreateDeleteView)
@@ -12,7 +12,6 @@ router.register('users', UserViewSet, 'users')
 router.register('tags', TagApiViewSet, 'tags')
 router.register('ingredients', IngredientApiViewSet, 'ingredients')
 router.register('recipes', RecipeModelViewSet, 'recipes')
-#router.register('users/subscriptions/', FollowViewSet, 'subscriptions')
 
 
 urlpatterns = [
