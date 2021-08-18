@@ -1,40 +1,38 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.http import HttpResponse, request
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from django.http import HttpResponse, request
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
-
 from djoser.views import UserViewSet as DjoserUserViewSet
-
-from rest_framework import generics, status, viewsets, filters
+from rest_framework import filters, generics, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import (AllowAny, IsAuthenticated, 
-                                        IsAuthenticatedOrReadOnly,)
+from rest_framework.permissions import (AllowAny, IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .permissions import AdminOrAuthorOrReadOnly
-from .filters import RecipeFilter
+from recipes.models import (Favorite, Ingredient, IngredientRecipe, Recipe,
+                            ShoppingCart, Tag)
 from users.models import Follow
-from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag, IngredientRecipe
-from .serializers import (CreateRecipeSerializer, IngredientSerializer, SubscribesSerializer, 
-                          TagSerializer,ShoppingCartSerializer,
-                          RecipeSerializer, UserSerializer,
-                          FavoriteSerializer, FollowSerializer,
-                           )
 
+from .filters import IngredientFilter, RecipeFilter
+from .permissions import AdminOrAuthorOrReadOnly
+from .serializers import (CreateRecipeSerializer, FavoriteSerializer,
+                          FollowSerializer, IngredientSerializer,
+                          RecipeSerializer, ShoppingCartSerializer,
+                          SubscribesSerializer, TagSerializer, UserSerializer)
 
 User = get_user_model()
 
 
 class UserViewSet(DjoserUserViewSet):
 
-    queryset = User.objects.all()
+    #queryset = User.objects.all()
 
-    def get_serializer_class(self, action=None):
-        if self.action == 'subscriptions':
-            return SubscribesSerializer 
-        return UserSerializer
+    #def get_serializer_class(self, action=None):
+    #    if self.action == 'following_list':
+    #        return SubscribesSerializer 
+    #    return UserSerializer
 
     def get_queryset(self):
         if self.action == 'following_list':
@@ -44,7 +42,8 @@ class UserViewSet(DjoserUserViewSet):
         return self.queryset
 
     @action(detail=False,
-            url_path='subscriptions')
+            url_path='subscriptions',
+            serializer_class=SubscribesSerializer)
     def following_list(self, request):
         return self.list(request)
 
@@ -73,16 +72,21 @@ class SubscribeCreateDeleteView(APIView):
 
 
     def delete(self, request, id):
-
+        
         author = get_object_or_404(User, id=id)
         user = request.user
 
-        subscribe = get_object_or_404(Follow, 
-                                      author=author,
-                                      user=user)
-        subscribe.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if Follow.objects.filter(user=user, 
+                                 author=author).exists():
+            author = get_object_or_404(User, id=id)
+            user = request.user
 
+            subscribe = get_object_or_404(Follow, 
+                                          author=author,
+                                          user=user)
+            subscribe.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_404_NOT_FOUND)
 
 class TagApiViewSet(viewsets.ViewSet):
 
@@ -165,8 +169,8 @@ class ShoppingCartCreateDeleteView(APIView):
 
 class IngredientApiViewSet(viewsets.ViewSet):
     
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['name', ]
+    filter_backends = [DjangoFilterBackend]
+    filter_class = IngredientFilter
     permission_classes = [AllowAny, ]
     
     def list(self, request):

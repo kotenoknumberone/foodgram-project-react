@@ -8,6 +8,7 @@ services:
     env_file:
       - ../backend/foodgram/.env
   backend:
+    #image: nekotenok/foodgram_backend
     build:
       context: ../backend
       dockerfile: Dockerfile
@@ -19,6 +20,7 @@ services:
     depends_on:
       - db
   frontend:
+    #image: nekotenok/foodgram_frontend
     build:
       context: ../frontend
       dockerfile: Dockerfile
@@ -35,8 +37,8 @@ services:
       - ../frontend/build:/usr/share/nginx/html/
       - ../docs/redoc.html:/usr/share/nginx/html/api/docs/redoc.html
       - ../docs/openapi-schema.yml:/usr/share/nginx/html/api/docs/openapi-schema.yml
-      - static_value:/static/
-      - media_value:/media/
+      - static_value:/code/static/
+      - media_value:/code/media/
     depends_on:
       - frontend
 volumes:

@@ -30,11 +30,13 @@ class Follow(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='followers',
+        verbose_name='Подписчик'
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='following',
+        verbose_name='Автор'
     )
 
     class Meta:
@@ -42,3 +44,4 @@ class Follow(models.Model):
 
     def __str__(self):
         return f'{self.user} / {self.author}'
+

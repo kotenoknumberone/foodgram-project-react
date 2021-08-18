@@ -1,19 +1,19 @@
 from django.contrib.auth import get_user_model
+from django.core import exceptions
 from django.core.exceptions import ValidationError
 from django.db.models import fields
 from django.shortcuts import get_object_or_404
-
-from djoser.serializers import UserCreateSerializer as DjoserRegistrationSerializer
+from djoser.serializers import \
+    UserCreateSerializer as DjoserRegistrationSerializer
 from djoser.serializers import UserSerializer as DjoserUserSerializer
 from drf_extra_fields.fields import Base64ImageField
-from rest_framework import validators
-
-from recipes.models import Ingredient, IngredientRecipe, Recipe, ShoppingCart, Tag, Favorite
-from rest_framework import serializers
+from rest_framework import serializers, validators
 from rest_framework.serializers import ReadOnlyField
 from rest_framework.validators import UniqueTogetherValidator
-from users.models import Follow
 
+from recipes.models import (Favorite, Ingredient, IngredientRecipe, Recipe,
+                            ShoppingCart, Tag)
+from users.models import Follow
 
 User = get_user_model()
 
@@ -40,7 +40,8 @@ class UserSerializer(DjoserUserSerializer):
                   'username',
                   'first_name',
                   'last_name',
-                  'is_subscribed',)
+                  'is_subscribed',
+                  'password',)
 
     def get_is_subscribed(self, user):
         author = self.context['request'].user
@@ -59,14 +60,17 @@ class ShowAuthorRecipeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipe
-        fields = ('id', 'name', 'image', 'cooking_time')
+        fields = ('id', 
+                  'name', 
+                  'image', 
+                  'cooking_time')
 
 
 class SubscribesSerializer(DjoserUserSerializer):
 
     is_subscribed = serializers.SerializerMethodField()
     recipes = serializers.SerializerMethodField('get_author_recipes')
-    recipes_count = serializers.SerializerMethodField('get_count_recipes')
+    recipes_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -81,10 +85,19 @@ class SubscribesSerializer(DjoserUserSerializer):
             'recipes_count',
         )
     def get_author_recipes(self, obj):
-        authors = User.objects.filter(following__user=obj)
-        for author in authors:
-            recipes = Recipe.objects.filter(author=author)
-            return ShowAuthorRecipeSerializer(recipes, many=True).data
+        recipes_limit = self.context.get('request').GET.get('recipes_limit', 
+                                                            None)
+        if not recipes_limit is None:
+            recipes = Recipe.objects.filter(author=obj)[:int(recipes_limit)]
+            serializer = ShowAuthorRecipeSerializer(data=recipes, 
+                                                many=True,)
+            serializer.is_valid()
+            return serializer.data
+        recipes = Recipe.objects.filter(author=obj)
+        serializer = ShowAuthorRecipeSerializer(data=recipes, 
+                                                many=True,)
+        serializer.is_valid()
+        return serializer.data
 
     def get_is_subscribed(self, user):
         author = self.context['request'].user
@@ -92,7 +105,7 @@ class SubscribesSerializer(DjoserUserSerializer):
             return False
         return Follow.objects.filter(user=user, author=author).exists()
 
-    def get_count_recipes(self, user):
+    def get_recipes_count(self, user):
         recipes = Recipe.objects.all().filter(author=user)
         return len(recipes)
 
@@ -218,6 +231,7 @@ class CreateRecipeSerializer(serializers.ModelSerializer):
 
         ingredients = validated_data.pop('ingredients')
         IngredientRecipe.objects.filter(recipe=instance).delete()
+        tags = validated_data.pop('tags')
         
         for ingredient in ingredients:
             IngredientRecipe.objects.create(
@@ -231,7 +245,7 @@ class CreateRecipeSerializer(serializers.ModelSerializer):
         instance.text = validated_data.pop('text')
         instance.image = validated_data.pop('image')
         instance.cooking_time = validated_data.pop('cooking_time')
-        instance.tags.set('tags')
+        instance.tags.set(tags)
         instance.save()
         return instance
 

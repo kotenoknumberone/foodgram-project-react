@@ -28,17 +28,23 @@ class Recipe(models.Model):
 
     author = models.ForeignKey(User,
                                on_delete=models.CASCADE,
-                               blank=False, null=True,)
-    name = models.CharField(max_length=256)
-    image = models.ImageField(upload_to='recipes/images',
+                               blank=False, 
+                               null=True,
+                               verbose_name='Автор')
+    name = models.CharField(max_length=256,
+                            verbose_name='Название')
+    image = models.ImageField(upload_to='recipes/images/',
                               blank=True,
-                              null=True)
-    text = models.TextField()
+                              null=True,
+                              verbose_name='Изображение')
+    text = models.TextField(verbose_name='Описание')
     ingredients = models.ManyToManyField(Ingredient,
                                          through='IngredientRecipe',
-                                         blank=True)
-    tags = models.ManyToManyField(Tag)
-    cooking_time = models.PositiveIntegerField()
+                                         blank=True,
+                                         verbose_name='Ингредиенты')
+    tags = models.ManyToManyField(Tag,
+                                  verbose_name='Тэги')
+    cooking_time = models.PositiveIntegerField(verbose_name='Время')
 
     def __str__(self) -> str:
         return self.name
@@ -47,16 +53,18 @@ class Recipe(models.Model):
 class IngredientRecipe(models.Model):
     ingredient = models.ForeignKey(Ingredient, 
                                    on_delete=models.CASCADE,
-                                   null=True)
+                                   null=True,
+                                   verbose_name='Ингредиент',)
     recipe = models.ForeignKey(Recipe, 
-                               on_delete=models.CASCADE,)
-    amount = models.PositiveIntegerField()
+                               on_delete=models.CASCADE,
+                               verbose_name='Рецепт',)
+    amount = models.PositiveIntegerField(verbose_name='Количество',)
 
 
 class Favorite(models.Model):
     recipes = models.ForeignKey(Recipe,
                                 on_delete=models.CASCADE,
-                                verbose_name='Рецепты'
+                                verbose_name='Рецепты',
     )
     user = models.ForeignKey(User,
                              on_delete=models.CASCADE,
