@@ -6,7 +6,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     env_file:
-      - ../backend/foodgram/.env
+      - ./.env
   backend:
     #image: nekotenok/foodgram_backend
     build:
@@ -17,6 +17,8 @@ services:
     volumes:
       - static_value:/code/static/
       - media_value:/code/media/
+    env_file:
+      - ../backend/.env
     depends_on:
       - db
   frontend:

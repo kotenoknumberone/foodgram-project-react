@@ -10,7 +10,8 @@ SECRET_KEY = 'django-insecure-(6ge86=v8%jf=^&45nrm51k!8v!e2@94svhd-(lk9pt+km5f*6
 DEBUG = True
 
 ALLOWED_HOSTS = ['backend',
-                 '127.0.0.1']
+                 '127.0.0.1',
+                 '84.201.168.220']
 
 load_dotenv()
 
@@ -62,7 +63,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'foodgram.wsgi.application'
 
 
-DATABASES = {
+'''DATABASES = {
     'default': {
         'ENGINE': os.getenv('DB_ENGINE'),
         'NAME': os.getenv('POSTGRES_DB'),
@@ -70,6 +71,16 @@ DATABASES = {
         'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
         'HOST': os.getenv('DB_HOST'),
         'PORT': os.getenv('DB_PORT'),
+    }
+}'''
+DATABASES = {
+    "default": {
+        "ENGINE": os.environ.get("DB_ENGINE",),
+        "NAME": os.environ.get("POSTGRES_DB"),
+        "USER": os.environ.get("POSTGRES_USER"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
+        "HOST": os.environ.get("DB_HOST"),
+        "PORT": os.environ.get("DB_PORT"),
     }
 }
 
