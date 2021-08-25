@@ -1,6 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.http import HttpResponse, request
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet as DjoserUserViewSet
@@ -42,13 +41,6 @@ User = get_user_model()
 
 
 class UserViewSet(DjoserUserViewSet):
-
-    # queryset = User.objects.all()
-
-    # def get_serializer_class(self, action=None):
-    #    if self.action == 'following_list':
-    #        return SubscribesSerializer
-    #    return UserSerializer
 
     def get_queryset(self):
         if self.action == "following_list":
@@ -183,24 +175,16 @@ class ShoppingCartCreateDeleteView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class IngredientApiViewSet(viewsets.ViewSet):
+class IngredientApiViewSet(viewsets.ModelViewSet):
 
-    filter_backends = [DjangoFilterBackend]
-    filter_class = IngredientFilter
+    queryset = Ingredient.objects.all()
+    serializer_class = IngredientSerializer
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = IngredientFilter
     permission_classes = [
         AllowAny,
     ]
-
-    def list(self, request):
-        queryset = Ingredient.objects.all()
-        serializer = IngredientSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-    def retrieve(self, request, pk=None):
-        queryset = Ingredient.objects.all()
-        ingredient = get_object_or_404(queryset, pk=pk)
-        serializer = IngredientSerializer(ingredient)
-        return Response(serializer.data)
+    pagination_class = None
 
 
 class RecipeModelViewSet(viewsets.ModelViewSet):
@@ -239,16 +223,14 @@ class RecipeModelViewSet(viewsets.ModelViewSet):
                         "amount": amount,
                     }
                 else:
-                    purchase_list[name]["amount"] = (
-                        purchase_list[name]["amount"] + amount
-                    )
+                    purchase_list[name]["amount"] += amount
         wishlist = []
         for item in purchase_list:
             wishlist.append(
                 f'{item} - {purchase_list[item]["amount"]}'
-                f'{purchase_list[item]["measurement_unit"]}/n'
+                f'{purchase_list[item]["measurement_unit"]}\n'
             )
-        wishlist.append("/n")
+        wishlist.append("\n")
         wishlist.append("FoodGram, 2021")
         response = HttpResponse(wishlist, "Content-Type: application/pdf")
         response["Content-Disposition"] = 'attachment; filename="wishlist.pdf"'

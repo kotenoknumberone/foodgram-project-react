@@ -29,7 +29,7 @@ class RecipeFilter(filters.FilterSet):
 
 class IngredientFilter(filters.FilterSet):
 
-    name = filters.CharFilter(field_name="name", lookup_expr="startswith")
+    name = filters.CharFilter(field_name="name", lookup_expr="istartswith")
 
     class Meta:
         model = Ingredient

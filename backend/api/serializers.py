@@ -257,8 +257,7 @@ class CreateRecipeSerializer(serializers.ModelSerializer):
         instance.image = validated_data.get('image', instance.image)
         instance.cooking_time = validated_data.pop("cooking_time")
         instance.tags.set(tags)
-        instance.save()
-        return instance
+        return super().update(instance, validated_data)
 
     def to_representation(self, instance):
         data = RecipeSerializer(
